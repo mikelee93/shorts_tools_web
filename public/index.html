@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쇼츠 스튜디오 도구 — 회전 LP 뮤직 플레이어 & 댓글 생성기</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons, html2canvas & JSZip -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.all.min.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="min-h-screen flex flex-col bg-[#0c0f17] text-slate-100">
+
+  <!-- ================= 헤더 내비게이션 ================= -->
+  <header class="border-b border-white/10 bg-[#121624]/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- 로고 및 타이틀 -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+            쇼츠 스튜디오 도구
+            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">Mac & Web 지원</span>
+          </h1>
+          <p class="text-xs text-slate-400">유튜브 쇼츠 & 틱톡 오버레이 필수 에셋 생성기</p>
+        </div>
+      </div>
+
+      <!-- 모드 전환 탭 버튼 -->
+      <nav class="flex items-center gap-1.5 bg-[#0a0d16] p-1 rounded-xl border border-white/10">
+        <button id="tabBtnVinyl" onclick="switchTab('vinyl')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-purple-600 text-white shadow-md shadow-purple-600/30">
+          <i data-lucide="disc-3" class="w-4 h-4"></i>
+          회전 LP 뮤직 플레이어
+        </button>
+        <button id="tabBtnComment" onclick="switchTab('comment')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">
+          <i data-lucide="message-square-plus" class="w-4 h-4"></i>
+          유튜브 댓글 생성기
+        </button>
+        <button id="tabBtnSilence" onclick="switchTab('silence')" class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">
+          <i data-lucide="scissors" class="w-4 h-4"></i>
+          ✂️ 무음 제거 & 배속 조절 에디터
+        </button>
+      </nav>
+
+      <!-- 우측 빠른 배포 안내 배지 -->
+      <div class="hidden sm:flex items-center gap-2">
+        <a href="#deployGuide" onclick="document.getElementById('deployModal').classList.remove('hidden')" class="text-xs text-purple-300 hover:text-purple-200 bg-purple-950/60 border border-purple-700/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+          <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+          Mac 사용자에게 링크 보내기
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 메인 본문 ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ============================================================= -->
+    <!-- 1️⃣ TAB 1: 회전 LP 턴테이블 뮤직 플레이어 위젯                    -->
+    <!-- ============================================================= -->
+    <section id="viewVinyl" class="space-y-6">
+
+      <!-- 소개 배너 -->
+      <div class="bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900/40 border border-purple-500/20 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            💿 360도 회전 LP 턴테이블 위젯 생성기
+            <span class="text-xs font-normal text-purple-300 bg-purple-900/60 px-2.5 py-0.5 rounded-full border border-purple-700/40">레퍼런스 스타일 100% 동일</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">
+            곡명·가수를 적고 앨범 자켓을 올리면, <strong>빙글빙글 도는 LP판 + 춤추는 오디오 파형</strong>이 합쳐진 고화질 투명 영상을 만들어 캡컷/프리미어에서 바로 얹을 수 있습니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 2열 그리드: 좌측(설정 패널) / 우측(실시간 캔버스 모니터) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 좌측: 설정 입력 폼 (5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+
+          <!-- 1. 기본 정보 설정 -->
+          <div class="glass-panel rounded-2xl p-5 space-y-4">
+            <h3 class="text-xs font-bold text-purple-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="music" class="w-4 h-4"></i> 곡 및 아티스트 정보
+            </h3>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">곡 제목 (Title)</label>
+                <input type="text" id="vinylTitle" value="전화받어" placeholder="예: 전화받어" class="w-full glass-input text-xs rounded-xl px-3 py-2 font-bold">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">아티스트 (Artist)</label>
+                <input type="text" id="vinylArtist" value="미나" placeholder="예: 미나" class="w-full glass-input text-xs rounded-xl px-3 py-2">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 items-end">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">발매 연도 (Year)</label>
+                <input type="text" id="vinylYear" value="2002" placeholder="예: 2002" class="w-full glass-input text-xs rounded-xl px-3 py-2">
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-medium text-slate-400">채널 배지 텍스트</label>
+                  <span class="text-[10px] text-purple-400 font-semibold">엔터로 2줄 가능</span>
+                </div>
+                <textarea id="vinylChannel" rows="2" placeholder="예: 연예뉴스&#10;소식" class="w-full glass-input text-xs rounded-xl px-3 py-1.5 resize-none leading-tight font-medium">연예뉴스&#10;소식</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 에셋 파일 업로드 -->
+          <div class="glass-panel rounded-2xl p-5 space-y-4">
+            <h3 class="text-xs font-bold text-purple-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="image" class="w-4 h-4"></i> 미디어 파일 등록
+            </h3>
+
+            <!-- 앨범 커버 이미지 -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">앨범 자켓 이미지 (LP판 중앙에 쏙 들어감)</label>
+              <label class="flex items-center justify-between glass-input rounded-xl px-3 py-2.5 cursor-pointer hover:border-purple-500/50 transition">
+                <span class="text-xs text-slate-300 flex items-center gap-2">
+                  <i data-lucide="upload" class="w-4 h-4 text-purple-400"></i>
+                  앨범 커버 사진 선택
+                </span>
+                <span class="text-[11px] bg-purple-600/30 text-purple-300 px-2 py-0.5 rounded font-medium">찾아보기</span>
+                <input type="file" id="vinylAlbumFile" accept="image/*" class="hidden">
+              </label>
+            </div>
+
+            <!-- 채널 로고 이미지 -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-medium text-slate-400">채널 로고 이미지 (우측 상단 엠블럼)</label>
+                <span id="vinylLogoStatus" class="text-[10px] text-pink-400 font-bold bg-pink-950/60 border border-pink-700/40 px-2 py-0.5 rounded-full">공식 '연예뉴스 소식' 로고 기본 적용됨</span>
+              </div>
+              <div class="flex gap-2">
+                <label class="flex-1 flex items-center justify-between glass-input rounded-xl px-3 py-2.5 cursor-pointer hover:border-purple-500/50 transition">
+                  <span class="text-xs text-slate-300 flex items-center gap-2">
+                    <i data-lucide="badge-check" class="w-4 h-4 text-pink-400"></i>
+                    다른 로고 사진으로 변경
+                  </span>
+                  <span class="text-[11px] bg-white/10 text-slate-300 px-2 py-0.5 rounded font-medium">찾아보기</span>
+                  <input type="file" id="vinylLogoFile" accept="image/*" class="hidden">
+                </label>
+                <button type="button" onclick="resetVinylLogo()" title="공식 연예뉴스 소식 로고로 복원" class="px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-pink-600/20 text-xs text-slate-300 hover:text-pink-300 transition flex items-center gap-1 font-semibold">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  복원
+                </button>
+              </div>
+            </div>
+
+            <!-- 오디오 음원 파일 (선택) -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">음악 파일 (MP3 / WAV / M4A - 재생 시 파형 연동)</label>
+              <label class="flex items-center justify-between glass-input rounded-xl px-3 py-2.5 cursor-pointer hover:border-purple-500/50 transition">
+                <span class="text-xs text-slate-300 flex items-center gap-2">
+                  <i data-lucide="volume-2" class="w-4 h-4 text-purple-400"></i>
+                  음원 파일 선택
+                </span>
+                <span class="text-[11px] bg-emerald-600/30 text-emerald-300 px-2 py-0.5 rounded font-medium">MP3 로드</span>
+                <input type="file" id="vinylAudioFile" accept="audio/*" class="hidden">
+              </label>
+            </div>
+          </div>
+
+          <!-- 3. 모션 및 스타일 세부 조절 -->
+          <div class="glass-panel rounded-2xl p-5 space-y-4">
+            <h3 class="text-xs font-bold text-purple-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="sliders" class="w-4 h-4"></i> 회전 및 출력 설정
+            </h3>
+
+            <!-- LP 회전 속도 -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>LP판 회전 속도</span>
+                <span class="text-purple-400 font-bold">부드러운 회전</span>
+              </div>
+              <input type="range" id="vinylSpeed" min="0" max="2.5" step="0.1" value="0.8" class="w-full accent-purple-500">
+            </div>
+
+            <!-- 💡 카드 가로 너비 (길이) 조절 (첫 번째 이미지 레퍼런스 스타일) -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>카드 가로 너비 (길이 조절)</span>
+                <span id="vinylWidthVal" class="text-purple-400 font-bold">580px (Image 1 컴팩트 추천)</span>
+              </div>
+              <input type="range" id="vinylWidthSlider" min="500" max="880" step="10" value="580" class="w-full accent-purple-500">
+              <div class="flex gap-1.5 mt-2 flex-wrap">
+                <button type="button" onclick="setVinylWidth(540)" class="text-[10px] bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 px-2 py-0.5 rounded border border-white/10 transition">540px (초밀착)</button>
+                <button type="button" onclick="setVinylWidth(580)" class="text-[10px] bg-purple-600/30 text-purple-300 font-bold px-2 py-0.5 rounded border border-purple-500/40 transition">580px (Image 1 추천)</button>
+                <button type="button" onclick="setVinylWidth(680)" class="text-[10px] bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 px-2 py-0.5 rounded border border-white/10 transition">680px (표준)</button>
+                <button type="button" onclick="setVinylWidth(880)" class="text-[10px] bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 px-2 py-0.5 rounded border border-white/10 transition">880px (와이드)</button>
+              </div>
+            </div>
+
+            <!-- 💡 카드 외곽 흰색 테두리 설정 (기본: 무테 / 테두리 없음) -->
+            <div>
+              <div class="flex justify-between items-center text-xs text-slate-400 mb-1">
+                <span>카드 외곽 테두리</span>
+                <span id="vinylBorderStatus" class="text-emerald-400 font-bold text-[11px]">무테 (테두리 없음)</span>
+              </div>
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-black/40 cursor-pointer hover:border-purple-500/50">
+                <input type="checkbox" id="vinylBorderToggle" class="w-4 h-4 rounded accent-purple-500 cursor-pointer">
+                <span class="text-xs text-slate-300">외곽 흰색 테두리선 표시 (체크 해제 시 깔끔한 무테 스타일)</span>
+              </label>
+            </div>
+
+            <!-- 💡 카드 모서리 둥글기 (Radius) 조절 (댓글처럼 살짝 둥글게) -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>카드 모서리 둥글기 (Radius)</span>
+                <span id="vinylRadiusVal" class="text-purple-400 font-bold">8px (댓글과 동일 · 추천)</span>
+              </div>
+              <input type="range" id="vinylRadiusSlider" min="0" max="30" step="1" value="8" class="w-full accent-purple-500">
+              <div class="flex gap-1.5 mt-2 flex-wrap">
+                <button type="button" onclick="setVinylRadius(0)" class="text-[10px] bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 px-2 py-0.5 rounded border border-white/10 transition">0px (직각)</button>
+                <button type="button" onclick="setVinylRadius(8)" class="text-[10px] bg-purple-600/30 text-purple-300 font-bold px-2 py-0.5 rounded border border-purple-500/40 transition">8px (댓글 동일 추천)</button>
+                <button type="button" onclick="setVinylRadius(12)" class="text-[10px] bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 px-2 py-0.5 rounded border border-white/10 transition">12px (부드럽게)</button>
+                <button type="button" onclick="setVinylRadius(22)" class="text-[10px] bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 px-2 py-0.5 rounded border border-white/10 transition">22px (기존 원형)</button>
+              </div>
+            </div>
+
+            <!-- 배경 투명도 / 그린스크린 선택 -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-2">비디오 배경 모드 (영상 편집기용)</label>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <label class="flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-black/40 cursor-pointer hover:border-purple-500/50" id="vinylBgLabel_transparent">
+                  <input type="radio" name="vinylBgMode" value="transparent" checked class="text-purple-600">
+                  <div>
+                    <span class="font-bold text-white block">투명 배경 (WebM)</span>
+                    <span class="text-[10px] text-slate-400">프리미어 / AE (알파 투명)</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 p-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/20 cursor-pointer hover:border-emerald-500/60" id="vinylBgLabel_green">
+                  <input type="radio" name="vinylBgMode" value="green" class="text-emerald-500">
+                  <div>
+                    <span class="font-bold text-emerald-400 block">그린스크린 (MP4)</span>
+                    <span class="text-[10px] text-emerald-300/80">캡컷(CapCut) 추천 · 둥근 모서리 보존</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 비디오 녹화 길이 -->
+            <div>
+              <div class="flex justify-between items-center text-xs text-slate-400 mb-1">
+                <span>비디오 생성 길이 (초)</span>
+                <span class="text-purple-400 font-bold text-[11px]">60 FPS 초고화질 고정</span>
+              </div>
+              <select id="vinylDuration" class="w-full glass-input text-xs rounded-xl px-3 py-2">
+                <option value="10">10초 루프 비디오</option>
+                <option value="15" selected>15초 쇼츠 표준 (추천)</option>
+                <option value="30">30초 롱 비디오</option>
+                <option value="60">60초 풀 버전</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 우측: 실시간 캔버스 프리뷰 및 다운로드 버튼 (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+
+          <div class="glass-panel rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-white">실시간 60FPS 비주얼라이저 모니터</span>
+                <span class="text-[10px] font-bold text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded-full border border-purple-500/30">60 FPS Ultra HD</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" id="vinylPlayBtn" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center transition shadow-md shadow-purple-600/30">
+                  <i data-lucide="play" class="w-3.5 h-3.5 inline-block mr-1"></i> 음악 재생
+                </button>
+              </div>
+            </div>
+
+            <!-- 프리뷰 화면 박스 (격자 투명 배경) -->
+            <div id="canvasPreviewContainer" class="checker-bg rounded-xl p-6 flex justify-center items-center overflow-hidden min-h-[300px] border border-white/10 shadow-inner">
+              <canvas id="vinylCanvas" class="max-w-full h-auto drop-shadow-2xl"></canvas>
+            </div>
+
+            <div class="text-[11px] text-slate-400 mt-2 flex items-center justify-between">
+              <span>* 실시간으로 360도 회전하는 LP와 리듬에 맞춰 춤추는 파형이 60FPS로 렌더링됩니다.</span>
+              <span id="vinylDimBadge" class="text-purple-400 font-mono">580 × 240 px (HD)</span>
+            </div>
+          </div>
+
+          <!-- 내보내기 버튼 박스 -->
+          <div class="glass-panel rounded-2xl p-5 space-y-3">
+            <h3 class="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 원클릭 고화질 에셋 다운로드 (60 FPS)
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- 비디오 다운로드 버튼 (모드에 따라 동적 변경) -->
+              <button type="button" id="vinylExportBtn" onclick="exportVinylVideo()" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition">
+                <i data-lucide="video" class="w-4 h-4"></i>
+                <span id="vinylExportBtnText">60FPS 비디오 다운로드 (.webm)</span>
+              </button>
+
+              <!-- PNG 스틸컷 이미지 -->
+              <button type="button" onclick="exportVinylImage()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 border border-white/10 transition">
+                <i data-lucide="image" class="w-4 h-4 text-pink-400"></i>
+                투명 PNG 이미지 다운로드
+              </button>
+            </div>
+
+            <div id="vinylExportStatus" class="text-xs text-center text-slate-400 pt-0.5"></div>
+
+            <!-- 💡 캡컷(CapCut) 둥근 모서리 적용 핵심 가이드 -->
+            <div class="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3.5 space-y-2 text-xs mt-2">
+              <div class="flex items-center gap-2 text-emerald-400 font-bold">
+                <i data-lucide="help-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>💡 캡컷(CapCut)에서 22px 둥근 모서리가 직각으로 보일 때 해결법</span>
+              </div>
+              <ul class="text-[11px] text-slate-300 space-y-1.5 list-disc pl-4 leading-relaxed">
+                <li><strong class="text-white">직각으로 보이는 원인:</strong> 캡컷(CapCut PC/모바일)은 비디오 트랙에서 알파 투명 채널을 지원하지 않아, 둥근 모서리 바깥쪽의 투명 영역을 <strong class="text-rose-400">검은색(#000000)</strong>으로 채웁니다. 카드 본체도 어두운 색상이라 검은색 모서리와 합쳐져 직각 네모 박스로 보이게 됩니다.</li>
+                <li><strong class="text-emerald-300">해결법 1 (가장 추천 · 크로마키):</strong> 위에서 <strong class="text-emerald-400">[그린스크린 (MP4)]</strong>를 선택해 다운로드한 뒤, 캡컷에서 <strong class="text-white">[동영상] &gt; [오리기] &gt; [크로마키]</strong>를 켜고 스포이드로 초록색을 1번 찍어주시면 <strong>22px 둥근 모서리가 100% 완벽하게 보존</strong>됩니다!</li>
+                <li><strong class="text-purple-300">해결법 2 (캡컷 자체 마스크):</strong> 기존 비디오를 그대로 쓰실 경우, 캡컷에서 클립 선택 후 <strong class="text-white">[동영상] &gt; [마스크] &gt; [직사각형]</strong>을 적용하고 <strong class="text-white">[모서리 둥글기]</strong>를 조절하면 캡컷 내에서 바로 둥글게 잘립니다.</li>
+                <li><strong class="text-pink-300">해결법 3 (정지 화면은 투명 PNG):</strong> 정지 화면으로 쓰실 때는 우측의 <strong class="text-pink-300">[투명 PNG 이미지 다운로드]</strong>를 누르시면 크로마키 작업 없이도 즉시 22px 둥근 모서리로 투명하게 얹어집니다.</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- 2️⃣ TAB 2: 유튜브 정품 스타일 댓글 카드 생성기                    -->
+    <!-- ============================================================= -->
+    <!-- ============================================================= -->
+    <!-- 2️⃣ TAB 2: 유튜브 댓글 생성기 (Image 1 & Image 3 디자인 100% 동일)  -->
+    <!-- ============================================================= -->
+    <section id="viewComment" class="space-y-4 hidden">
+
+      <!-- 상단 헤더 배너 -->
+      <div class="bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-slate-900/40 border border-pink-500/20 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            📝 댓글 생성기
+            <span class="text-xs font-normal text-pink-300 bg-pink-900/60 px-2.5 py-0.5 rounded-full border border-pink-700/40">다중 연속 선택 & 블러 지원</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            YouTube 영상 URL을 입력해 댓글 카드 이미지를 만듭니다. 체크박스로 여러 댓글을 연속 선택하면 한 번에 띄워집니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 메인 3열 그리드 (좌측: 스타일설정 / 중앙: 댓글목록 / 우측: 실시간스택미리보기) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- ── 1열 (좌측): 카드 스타일 & 추출 설정 (4 cols) ────────────────── -->
+        <div class="lg:col-span-4 space-y-4">
+
+          <!-- 추출 설정 -->
+          <div class="glass-panel rounded-2xl p-4 space-y-3">
+            <div class="text-xs font-bold text-pink-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="link" class="w-3.5 h-3.5"></i> 댓글 추출 설정
+            </div>
+
+            <input type="text" id="cgenVideoUrl" value="" placeholder="YouTube URL 또는 쇼츠 링크 (예: https://www.youtube.com/shorts/...)"
+              class="w-full glass-input text-xs rounded-xl px-3 py-2 font-medium"
+              onkeydown="if(event.key==='Enter')cgenStartFetch()">
+
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" id="cgenFrom" placeholder="From (예: 0344 → 03:44)"
+                class="w-full glass-input text-xs rounded-xl px-2.5 py-1.5 font-mono" inputmode="numeric" oninput="cgenFormatTime(this)">
+              <input type="text" id="cgenTo" placeholder="To (예: 1455 → 14:55)"
+                class="w-full glass-input text-xs rounded-xl px-2.5 py-1.5 font-mono" inputmode="numeric" oninput="cgenFormatTime(this)">
+            </div>
+            <div class="text-[10px] text-slate-400">숫자만 입력하면 자동으로 콜론(:)이 붙습니다. 비워두면 전체 추출.</div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <span class="text-xs text-slate-400 flex-shrink-0">최대 추출:</span>
+              <select id="cgenLimit" class="flex-1 glass-input text-xs rounded-xl px-2.5 py-1.5">
+                <option value="50">50개</option>
+                <option value="100" selected>100개</option>
+                <option value="200">200개</option>
+              </select>
+            </div>
+
+            <button type="button" id="cgenFetchBtn" onclick="cgenStartFetch()"
+              class="w-full bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white text-xs font-bold py-2.5 rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
+              <i data-lucide="search" class="w-3.5 h-3.5"></i> 댓글 추출하기
+            </button>
+          </div>
+
+          <!-- 카드 스타일 & 3번째 이미지 체크박스 그룹 -->
+          <div class="glass-panel rounded-2xl p-4 space-y-3.5">
+            <div class="text-xs font-bold text-pink-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="palette" class="w-3.5 h-3.5"></i> 카드 스타일
+            </div>
+
+            <!-- 테마 선택 -->
+            <div>
+              <div class="text-[11px] text-slate-400 mb-1.5 font-medium">테마</div>
+              <div class="grid grid-cols-5 gap-1 text-[10px]">
+                <button type="button" class="cgen-theme-btn active" data-theme="dark" onclick="cgenSetTheme('dark')">Dark</button>
+                <button type="button" class="cgen-theme-btn" data-theme="light" onclick="cgenSetTheme('light')">Light</button>
+                <button type="button" class="cgen-theme-btn" data-theme="olive" onclick="cgenSetTheme('olive')">Olive</button>
+                <button type="button" class="cgen-theme-btn" data-theme="overlap" onclick="cgenSetTheme('overlap')">겹침</button>
+                <button type="button" class="cgen-theme-btn" data-theme="custom" onclick="cgenSetTheme('custom')">Custom</button>
+              </div>
+            </div>
+
+            <!-- Custom 패널 -->
+            <div id="cgenCustomPanel" class="cgen-custom-panel hidden">
+              <div class="cgen-custom-title">🎨 색상 및 테두리 보정</div>
+              <div class="cgen-c-row mb-2">
+                <label class="cgen-c-color"><span>배경</span><input type="color" id="cgenCBg" value="#ffffff" oninput="cgenUpdateCustomStyle()"></label>
+                <label class="cgen-c-color"><span>글자</span><input type="color" id="cgenCText" value="#0f0f0f" oninput="cgenUpdateCustomStyle()"></label>
+                <label class="cgen-c-color"><span>테두리</span><input type="color" id="cgenCBorder" value="#97a625" oninput="cgenUpdateCustomStyle()"></label>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                <span>테두리 두께 (<span id="cgenCBwLabel">1.5</span>px):</span>
+                <input type="range" id="cgenCBw" min="0" max="6" step="0.5" value="1.5" oninput="cgenUpdateCustomStyle()" class="flex-1 accent-pink-500">
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
+                <span>둥글기 (<span id="cgenCRadiusLabel">8</span>px):</span>
+                <input type="range" id="cgenCRadius" min="0" max="24" step="1" value="8" oninput="cgenUpdateCustomStyle()" class="flex-1 accent-pink-500">
+              </div>
+            </div>
+
+            <!-- 슬라이더들 -->
+            <div class="space-y-2 text-xs">
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                  <span>폰트 크기 (<span id="cgenFontSizeLabel" class="text-pink-400 font-bold">18</span>px)</span>
+                </div>
+                <input type="range" id="cgenFontSize" min="10" max="45" value="18" oninput="cgenUpdateStyle()" class="w-full accent-pink-500">
+              </div>
+
+              <!-- 가로너비 더 줄일 수 있게 min 180px 지원! (Requirement 2) -->
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                  <span>카드 너비 (<span id="cgenWidthLabel" class="text-pink-400 font-bold">390</span>px)</span>
+                  <span class="text-[10px] text-emerald-400 font-bold">초슬림 180px~1000px</span>
+                </div>
+                <input type="range" id="cgenWidth" min="180" max="1000" step="5" value="390" oninput="cgenUpdateStyle()" class="w-full accent-pink-500">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                  <span>카드 좌우 여백 (<span id="cgenPaddingLabel" class="text-pink-400 font-bold">16</span>px)</span>
+                </div>
+                <input type="range" id="cgenPadding" min="0" max="45" value="16" oninput="cgenUpdateStyle()" class="w-full accent-pink-500">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                  <span>카드 상하 여백 (<span id="cgenPaddingYLabel" class="text-pink-400 font-bold">12</span>px)</span>
+                </div>
+                <input type="range" id="cgenPaddingY" min="0" max="45" value="12" oninput="cgenUpdateStyle()" class="w-full accent-pink-500">
+              </div>
+
+              <!-- 💡 카드 모서리 모양 (직사각형 vs 둥근 모서리 선택) -->
+              <div>
+                <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1">
+                  <span>모서리 모양 (<span id="cgenRadiusLabel" class="text-pink-400 font-bold">8px (둥근 모서리)</span>)</span>
+                  <span id="cgenRadiusBadge" class="text-[10px] text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded-full border border-purple-500/30 font-bold">라운드</span>
+                </div>
+                <!-- 원클릭 직사각형 vs 둥근모서리 버튼 -->
+                <div class="grid grid-cols-2 gap-1.5 text-xs mb-1.5">
+                  <button type="button" id="cgenRadiusBtn_rect" onclick="cgenSetRadius(0)"
+                    class="py-2 px-2 rounded-xl border border-white/10 bg-black/40 hover:border-pink-500/50 text-slate-400 font-medium transition flex items-center justify-center gap-1.5">
+                    <span class="text-xs">🔲 직사각형 (0px 직각)</span>
+                  </button>
+                  <button type="button" id="cgenRadiusBtn_round" onclick="cgenSetRadius(8)"
+                    class="py-2 px-2 rounded-xl border border-pink-500/40 bg-pink-950/30 text-pink-300 font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-pink-500/10">
+                    <span class="text-xs">🔘 둥근 모서리 (8px)</span>
+                  </button>
+                </div>
+                <input type="range" id="cgenRadius" min="0" max="24" step="1" value="8" oninput="cgenUpdateRadiusSlider(this.value)" class="w-full accent-pink-500">
+                <div class="flex gap-1 mt-1.5 flex-wrap">
+                  <button type="button" onclick="cgenSetRadius(0)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">0px (직각)</button>
+                  <button type="button" onclick="cgenSetRadius(4)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">4px (살짝)</button>
+                  <button type="button" onclick="cgenSetRadius(8)" class="text-[10px] bg-pink-600/30 text-pink-300 font-bold px-2 py-0.5 rounded border border-pink-500/40 transition">8px (표준)</button>
+                  <button type="button" onclick="cgenSetRadius(14)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">14px (부드럽게)</button>
+                </div>
+              </div>
+
+              <div>
+                <div class="text-[11px] text-slate-400 mb-1">저장 포맷</div>
+                <select id="cgenExportFormat" onchange="cgenUpdateStyle()" class="w-full glass-input text-xs rounded-xl px-3 py-1.5">
+                  <option value="png" selected>PNG (고화질 투명/비투명)</option>
+                  <option value="jpg">JPG (고화질 압축)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- ── 3번째 이미지 체크박스 그룹 100% 동일 (Requirement 3) ── -->
+            <div class="pt-2 border-t border-white/10 space-y-1.5 text-xs text-slate-300">
+              <!-- 🔒 블러 처리 -->
+              <label class="flex items-center gap-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 cursor-pointer font-bold text-amber-300 hover:bg-amber-500/15 transition">
+                <input type="checkbox" id="cgenBlurIdentity" checked onchange="cgenUpdateStyle()" class="rounded accent-amber-500 w-4 h-4">
+                <span>🔒 프로필·아이디 블러 처리</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenShowAvatar" checked onchange="cgenUpdateStyle()" class="rounded accent-pink-500 w-4 h-4">
+                <span>프로필 이미지 표시</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenShowAuthor" checked onchange="cgenUpdateStyle()" class="rounded accent-pink-500 w-4 h-4">
+                <span>작성자(아이디) 표시</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenShowTime" onchange="cgenUpdateStyle()" class="rounded accent-pink-500 w-4 h-4">
+                <span>작성 시간 표시</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenShowLikes" onchange="cgenUpdateStyle()" class="rounded accent-pink-500 w-4 h-4">
+                <span>좋아요 수 표시</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenShowDislikes" onchange="cgenUpdateStyle()" class="rounded accent-pink-500 w-4 h-4">
+                <span>싫어요(👎) 표시</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenShowReplyBtn" onchange="cgenUpdateStyle()" class="rounded accent-pink-500 w-4 h-4">
+                <span>답글 버튼 표시</span>
+              </label>
+
+              <label class="flex items-center gap-2 py-1 px-1.5 cursor-pointer hover:text-white transition">
+                <input type="checkbox" id="cgenDefaultBlueAvatar" onchange="cgenUpdateStyle()" class="rounded accent-blue-500 w-4 h-4">
+                <span>🔵 유튜브 기본 프로필 사용</span>
+              </label>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ── 2열 & 3열 (중앙 & 우측): 댓글 리스트 & 다중 스택 미리보기 무대 (8 cols) ── -->
+        <div class="lg:col-span-8">
+          <div class="cgen-grid">
+
+            <!-- 중앙: 댓글 목록 (체크박스 다중 선택 지원) -->
+            <div class="cgen-listpane">
+              <div class="cgen-listhead" id="cgenListHead"></div>
+              <div class="cgen-listbody" id="cgenListBody"></div>
+            </div>
+
+            <!-- 우측: 카드 미리보기 & 실시간 스택 무대 -->
+            <div class="cgen-previewpane">
+              <div class="cgen-previewhead">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span id="cgenPreviewHead" class="font-bold">🖼 카드 미리보기 — 0개</span>
+                  <div class="cgen-bg-switcher">
+                    <button class="cgen-bg-btn active" data-bg="light-grid" onclick="cgenSetStageBg('light-grid')" title="밝은 격자">🏁 밝은 격자</button>
+                    <button class="cgen-bg-btn" data-bg="dark-grid" onclick="cgenSetStageBg('dark-grid')" title="어두운 격자">🏁 어두운 격자</button>
+                    <button class="cgen-bg-btn" data-bg="white" onclick="cgenSetStageBg('white')" title="흰색">⚪ 흰색</button>
+                    <button class="cgen-bg-btn" data-bg="black" onclick="cgenSetStageBg('black')" title="검정">⚫ 검정</button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <button class="cgen-export-btn" onclick="cgenExport()" id="cgenExportBtn" title="선택된 모든 카드를 ZIP 파일로 묶어서 다운로드">💾 ZIP 일괄 내보내기</button>
+                  <button class="px-2.5 py-1 text-xs font-bold rounded-md bg-white/10 hover:bg-white/20 text-white transition" onclick="cgenExportPng()" id="cgenPngBtn" title="선택된 모든 카드를 개별 PNG 파일로 저장">📷 PNG 저장</button>
+                  <button class="px-2.5 py-1 text-xs font-bold rounded-md bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/30 transition" onclick="cgenExportStackPng()" id="cgenStackPngBtn" style="display:none;" title="화면에 보이는 카드를 보이는 그대로 1장으로 합쳐서 저장">🖼️ 묶음(1장) 저장</button>
+                </div>
+              </div>
+
+              <!-- 포커스 댓글 편집 영역 -->
+              <div class="cgen-edit-fields">
+                <label>
+                  작성자 (포커스 댓글만 편집)
+                  <input type="text" id="cgenEditAuthor" oninput="cgenUpdateContent()" placeholder="댓글을 선택하세요">
+                </label>
+                <div>
+                  <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                    <span class="font-bold text-slate-300">내용 (포커스 댓글만 편집)</span>
+                    <div class="flex gap-1.5">
+                      <button type="button" onclick="cgenTranslateFocus('ja')" class="px-2 py-0.5 rounded text-[10px] font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-90">🇯🇵 AI 일본어</button>
+                      <button type="button" onclick="cgenTranslateFocus('ko')" class="px-2 py-0.5 rounded text-[10px] font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90">🌐 AI 한국어</button>
+                    </div>
+                  </div>
+                  <textarea id="cgenEditText" rows="2" oninput="cgenUpdateContent()" placeholder="댓글을 선택하세요"></textarea>
+                </div>
+                <label class="flex items-center gap-1.5 text-[11px] text-amber-300 font-bold mt-1 cursor-pointer">
+                  <input type="checkbox" id="cgenUseOverride" onchange="cgenToggleOverride()" class="rounded accent-amber-500">
+                  <span>🎯 이 댓글만 개별 스타일(크기/너비/여백) 적용</span>
+                </label>
+              </div>
+
+              <!-- 미리보기 무대 (연속 선택된 모든 카드가 수직으로 띄워짐) -->
+              <div class="cgen-stage bg-light-grid" id="cgenStage">
+                <div id="cgenCard" style="display:flex; flex-direction:column; align-items:center; width:100%; min-height:100px;"></div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- 3️⃣ TAB 3: ✂️ 무음 제거 & 배속 조절 에디터                       -->
+    <!-- ============================================================= -->
+    <section id="viewSilence" class="space-y-4 hidden">
+
+      <!-- Header Bar -->
+      <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+          <div style="font-size: 17px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+            <span>✂️ 무음 제거 & 배속 조절 에디터</span>
+            <span style="font-size: 10px; color: #ec4899; background: rgba(236,72,153,0.15); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(236,72,153,0.3);">mp3cut.net Style Engine</span>
+          </div>
+          <div style="font-size: 11.5px; color: #94a3b8; margin-top: 4px;">
+            오디오/영상 파일의 무음 구간을 자동 컷팅하고 재생 속도(0.5x~2.0x)를 한 번에 조절하여 저장합니다. (API 비용 0원)
+          </div>
+        </div>
+
+        <!-- 숨겨진 파일 선택 Input -->
+        <input type="file" id="silenceFileInput" accept="audio/*,video/*" style="display:none" onchange="onSilenceFileSelected(event)">
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button type="button" onclick="document.getElementById('silenceFileInput').click()" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 6px; height: 38px; border-radius: 8px; font-weight: bold; font-size: 12.5px; padding: 0 18px; box-shadow: 0 4px 12px rgba(245,158,11,0.25);">
+            <span>📁 오디오/영상 파일 열기</span>
+          </button>
+          <button type="button" onclick="resetSilenceEditor()" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; font-size: 11.5px; height: 38px; padding: 0 14px; border-radius: 8px; cursor: pointer;">
+            🔄 초기화
+          </button>
+        </div>
+      </div>
+
+      <!-- 오디오 메타데이터 정보 칩 -->
+      <div id="silenceMetaChips" style="display: none; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 16px; gap: 14px; flex-wrap: wrap; align-items: center;">
+        <div style="font-size: 11px; color: #94a3b8;">
+          <span>파일명: </span><strong id="silenceChipName" style="color: #ffffff;">-</strong>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8;">
+          <span>크기: </span><strong id="silenceChipSize" style="color: #38bdf8;">-</strong>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8;">
+          <span>원본 길이: </span><strong id="silenceChipDuration" style="color: #facc15;">-</strong>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8;">
+          <span>샘플레이트: </span><strong id="silenceChipSampleRate" style="color: #cbd5e1;">-</strong>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8;">
+          <span>채널: </span><strong id="silenceChipChannels" style="color: #cbd5e1;">-</strong>
+        </div>
+      </div>
+
+      <!-- 안내 배너 -->
+      <div id="silenceNoticeBanner" style="display:none; padding:12px 18px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); border-radius:10px; font-size:12px; color:#4ade80; font-weight:700; align-items:center; gap:10px;">
+        <span>💡</span>
+        <span id="silenceNoticeText">무음 구간 감지가 완료되었습니다. 아래 조작 패널에서 [적용하기]를 눌러 결과를 확인하세요.</span>
+      </div>
+
+      <!-- 🎵 메인 파형 시각화 Studio Canvas Box -->
+      <div style="background: #0284c7; background: linear-gradient(180deg, #075985 0%, #0c4a6e 100%); border: 1px solid rgba(56,189,248,0.3); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); position: relative;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="silenceHeaderTitle" style="font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: -0.2px;">Original Audio</div>
+            <div id="silenceHeaderBadge" style="font-size: 11.5px; font-weight: 800; color: #facc15; background: rgba(0,0,0,0.35); padding: 4px 12px; border-radius: 14px; border: 1px solid rgba(250,204,21,0.4); font-family: monospace;">감지 0개</div>
+          </div>
+          <div id="silencePlayTime" style="font-size: 13px; font-weight: 800; color: #38bdf8; font-family: monospace; letter-spacing: 0.5px;">
+            00:00.0 / 00:00.0
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; gap: 14px; align-items: center; font-size: 11px; color: #bae6fd; font-weight: 600;">
+            <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:#facc15; box-shadow:0 0 6px #facc15;"></span> 무음 감지됨</span>
+            <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:#ef4444; box-shadow:0 0 6px #ef4444;"></span> 제거됨</span>
+            <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:#22c55e; box-shadow:0 0 6px #22c55e;"></span> 유지됨</span>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display:flex; gap:4px; background:rgba(0,0,0,0.3); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.15);">
+              <button type="button" onclick="switchSilenceWaveTab('original')" id="btnSilenceTabOrig" style="background:#2563eb; border:none; color:#fff; padding:5px 14px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">원본 파형</button>
+              <button type="button" onclick="switchSilenceWaveTab('result')" id="btnSilenceTabResult" style="background:transparent; border:none; color:#94a3b8; padding:5px 14px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">결과 파형</button>
+            </div>
+
+            <span style="font-size: 11px; color: #e0f2fe; font-weight: 600;">줌:</span>
+            <input type="range" id="silenceWaveZoom" min="1" max="5" step="0.5" value="1" oninput="drawSilenceWaveform()" style="width: 80px; accent-color: #38bdf8;">
+          </div>
+        </div>
+
+        <div style="position: relative; width: 100%; height: 150px; background: #082f49; border-radius: 8px; overflow: hidden; margin-bottom: 15px; border: 1px solid rgba(56,189,248,0.2);">
+          <canvas id="silenceWaveformCanvas" width="1200" height="150" style="width: 100%; height: 100%; display: block; cursor: pointer;" onclick="onSilenceCanvasClick(event)"></canvas>
+        </div>
+
+        <!-- 🎛️ 일체형 오디오 조작 & 속도 조절 바 -->
+        <div style="display: flex; align-items: center; gap: 16px; background: #0b1329; padding: 12px 20px; border-radius: 14px; border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 8px 24px rgba(0,0,0,0.5); flex-wrap: wrap;">
+          <button type="button" id="btnSilencePlayPause" onclick="toggleSilenceAudioPlay()" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #ffffff; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+            ▶
+          </button>
+
+          <div style="flex: 1; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); padding: 8px 18px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.08); min-width: 260px;">
+            <span style="font-size: 15px; cursor: pointer;" title="천천히" onclick="updateSilenceSpeedRate(0.8)">🐢</span>
+            <input type="range" class="silence-speed-slider" id="silenceSpeedRateInputPlayer" min="0.5" max="2.0" step="0.05" value="1.0" oninput="updateSilenceSpeedRate(this.value)" style="flex: 1; accent-color: #4ade80; cursor: pointer;">
+            <span style="font-size: 15px; cursor: pointer;" title="빠르게" onclick="updateSilenceSpeedRate(1.5)">🐇</span>
+            <span id="silencePlayerSpeedVal" style="font-size: 13px; font-weight: 800; color: #4ade80; font-family: monospace; min-width: 48px; text-align: right;">1.00x</span>
+          </div>
+
+          <select class="silence-format-select" id="silenceExportFormatPlayer" onchange="syncSilenceExportFormat(this.value)" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.2); color: #ffffff; font-size: 12px; font-weight: 700; padding: 10px 14px; border-radius: 10px; cursor: pointer; outline: none;">
+            <option value="wav">wav ▾</option>
+            <option value="mp3">mp3 ▾</option>
+          </select>
+
+          <button type="button" id="btnSilenceDownload" onclick="downloadSilenceResult()" disabled style="background: #ffffff; border: none; color: #0f172a; font-size: 14px; font-weight: 800; padding: 10px 26px; border-radius: 20px; cursor: pointer; box-shadow: 0 4px 14px rgba(255,255,255,0.2); transition: all 0.2s;">
+            저장
+          </button>
+        </div>
+
+        <audio id="silenceAudioPlayer" style="display: none;"></audio>
+      </div>
+
+      <!-- 🎛️ 2-Column Controls Grid: ✂️ 무음 감지 & ⚡ 속도 조절 -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px;">
+        
+        <!-- Left Card: ✂️ 무음 감지 컨트롤 -->
+        <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; font-weight: 800; color: #38bdf8; display: flex; justify-content: space-between; align-items: center;">
+            <span>✂️ 1. 무음 감지 설정 (Silence Detection)</span>
+            <span id="silencePresetDesc" style="font-size: 10px; color: #94a3b8; font-weight: 500;">대화 빠르게 · -30 dB · 최소 0.25s</span>
+          </div>
+
+          <!-- PRESET 버튼 -->
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="td-tab-btn" onclick="selectSilencePreset('tight')" id="silencePreset_tight" style="padding: 5px 12px; font-size: 11px;">숨소리 제거 (-26dB)</button>
+            <button type="button" class="td-tab-btn active" onclick="selectSilencePreset('talk')" id="silencePreset_talk" style="padding: 5px 12px; font-size: 11px;">대화 빠르게 (-30dB)</button>
+            <button type="button" class="td-tab-btn" onclick="selectSilencePreset('podcast')" id="silencePreset_podcast" style="padding: 5px 12px; font-size: 11px;">팟캐스트 (-38dB)</button>
+            <button type="button" class="td-tab-btn" onclick="selectSilencePreset('speed_only')" id="silencePreset_speed_only" style="padding: 5px 12px; font-size: 11px; background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3); font-weight: 700;">⚡ 배속만 조절 (무음 유지)</button>
+            <button type="button" class="td-tab-btn" onclick="selectSilencePreset('custom')" id="silencePreset_custom" style="padding: 5px 12px; font-size: 11px;">사용자 정의</button>
+          </div>
+
+          <!-- dB & Duration Sliders -->
+          <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">
+                <span>노이즈 감지 데시벨 (dB)</span>
+                <strong id="silenceValDbLabel" style="color: #38bdf8;">-30 dB</strong>
+              </div>
+              <input type="range" id="silenceNoiseDb" min="-60" max="-10" step="1" value="-30" oninput="document.getElementById('silenceValDbLabel').textContent = this.value + ' dB'; selectSilencePreset('custom');" style="width: 100%; accent-color: #38bdf8;">
+            </div>
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">
+                <span>최소 무음 지속 시간 (초)</span>
+                <strong id="silenceValDurationLabel" style="color: #38bdf8;">0.25s</strong>
+              </div>
+              <input type="range" id="silenceMinDuration" min="0.1" max="2.0" step="0.05" value="0.25" oninput="document.getElementById('silenceValDurationLabel').textContent = this.value + 's'; selectSilencePreset('custom');" style="width: 100%; accent-color: #38bdf8;">
+            </div>
+          </div>
+
+          <!-- 감지 실행 버튼 -->
+          <button type="button" onclick="runSilenceDetection()" id="btnSilenceDetect" class="mine-start-btn" style="width: 100%; height: 38px; margin: 0; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); color: #38bdf8; font-weight: 700; font-size: 12.5px; border-radius: 8px; cursor: pointer;" disabled>
+            🔍 무음 구간 감지하기
+          </button>
+        </div>
+
+        <!-- Right Card: ⚡ 배속 조절 컨트롤 -->
+        <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; font-weight: 800; color: #facc15; display: flex; justify-content: space-between; align-items: center;">
+            <span>⚡ 2. 재생 속도 (Speed) 조절</span>
+            <span id="silenceSpeedBadge" style="font-size: 11px; color: #facc15; font-weight: 800; background: rgba(250,204,21,0.15); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(250,204,21,0.3);">1.00x (원래 속도)</span>
+          </div>
+
+          <!-- 속도 슬라이더 -->
+          <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; margin-bottom: 6px;">
+              <span>배속 조절 (0.5x ~ 2.0x)</span>
+              <span style="font-size: 10px; color: #94a3b8;">atempo 변환</span>
+            </div>
+            <input type="range" class="silence-speed-slider" id="silenceSpeedRateInputCard" min="0.5" max="2.0" step="0.05" value="1.0" oninput="updateSilenceSpeedRate(this.value)" style="width: 100%; accent-color: #facc15;">
+            
+            <!-- 퀵속도 버튼 칩 -->
+            <div style="display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;">
+              <button type="button" onclick="setSilenceSpeedPreset(0.8)" class="tb-opt-btn" style="padding: 3px 8px; font-size: 10.5px; border-radius: 4px;">0.8x</button>
+              <button type="button" onclick="setSilenceSpeedPreset(1.0)" class="tb-opt-btn" style="padding: 3px 8px; font-size: 10.5px; border-radius: 4px;">1.0x</button>
+              <button type="button" onclick="setSilenceSpeedPreset(1.15)" class="tb-opt-btn" style="padding: 3px 8px; font-size: 10.5px; border-radius: 4px; background: rgba(250,204,21,0.2); color: #facc15; border-color: rgba(250,204,21,0.4);">1.15x</button>
+              <button type="button" onclick="setSilenceSpeedPreset(1.25)" class="tb-opt-btn" style="padding: 3px 8px; font-size: 10.5px; border-radius: 4px;">1.25x</button>
+              <button type="button" onclick="setSilenceSpeedPreset(1.5)" class="tb-opt-btn" style="padding: 3px 8px; font-size: 10.5px; border-radius: 4px;">1.5x</button>
+              <button type="button" onclick="setSilenceSpeedPreset(2.0)" class="tb-opt-btn" style="padding: 3px 8px; font-size: 10.5px; border-radius: 4px;">2.0x</button>
+            </div>
+          </div>
+
+          <!-- 저장 포맷 선택 -->
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11.5px; font-weight: 700; color: #cbd5e1;">최종 저장 포맷:</span>
+            <select class="silence-format-select" id="silenceExportFormatCard" onchange="syncSilenceExportFormat(this.value)" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #ffffff; font-size: 11px; border-radius: 6px; padding: 6px 12px; outline: none; font-weight: 700;">
+              <option value="wav" selected>WAV (손실 없는 원본 품질)</option>
+              <option value="mp3">MP3 (용량 최적화 192k)</option>
+            </select>
+          </div>
+
+          <!-- 3개 KPI 메트릭 카드 -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+              <div style="font-size: 9px; color: #94a3b8;">무음 제거</div>
+              <div id="silenceValRemovedDuration" style="font-size: 12.5px; font-weight: 800; color: #f87171;">--</div>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+              <div style="font-size: 9px; color: #94a3b8;">최종 예측 길이</div>
+              <div id="silenceValFinalDuration" style="font-size: 12.5px; font-weight: 800; color: #4ade80;">--</div>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+              <div style="font-size: 9px; color: #94a3b8;">시간 절감률</div>
+              <div id="silenceValSavedPercent" style="font-size: 12.5px; font-weight: 800; color: #3b82f6;">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📜 자막 (SRT) 동기화 대본 입력 섹션 -->
+      <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <label for="silenceScriptInput" style="font-size: 13px; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+            <span>📝 자막(SRT) 추출용 대본 입력</span>
+            <span style="font-size: 11px; font-weight: 500; color: #c084fc; background: rgba(192, 132, 252, 0.15); padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(192, 132, 252, 0.3);">Vrew 스타일 의미 단위 자동 분할 연동</span>
+          </label>
+          
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.6); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+              <span style="font-size: 11.5px; font-weight: 700; color: #cbd5e1;">✂️ 자막 한 줄 최대 길이:</span>
+              <select id="silenceMaxCharsSelect" style="background: #090d16; border: 1px solid rgba(255,255,255,0.2); color: #facc15; font-size: 11.5px; font-weight: 800; border-radius: 6px; padding: 3px 8px; outline: none; cursor: pointer;">
+                <option value="10">10자 (Short - 매우 짧게)</option>
+                <option value="15" selected>15자 (Vrew 표준 · 숏폼 추천)</option>
+                <option value="20">20자 (Medium - 미디엄)</option>
+                <option value="25">25자 (Long)</option>
+                <option value="0">문장/줄바꿈 원본 그대로</option>
+              </select>
+            </div>
+
+            <button type="button" onclick="loadSampleSilenceScript()" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer;">
+              💡 샘플 대본 채우기
+            </button>
+          </div>
+        </div>
+        <textarea id="silenceScriptInput" rows="4" style="width: 100%; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 12px; color: #f8fafc; font-size: 13px; line-height: 1.5; resize: vertical; box-sizing: border-box; outline: none; font-family: inherit;" placeholder="여기에 오디오 대본 텍스트를 입력하세요. Vrew처럼 15자 내외 의미 단위로 자막이 자동 분할되어 숏폼 9:16 스크린에 1줄로 예쁘게 출력됩니다."></textarea>
+      </div>
+
+      <!-- 하단 최종 실행 & 다운로드 Action Bar -->
+      <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: nowrap;">
+          <button type="button" onclick="runSilenceApply()" id="btnSilenceApply" class="mine-start-btn" style="padding: 0 24px; height: 42px; font-size: 13.5px; margin: 0; background: #2563eb; border: 1px solid #3b82f6; color: #ffffff; font-weight: 800; border-radius: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.4); white-space: nowrap;" disabled>
+            <span>⚡ 무음제거 / 배속 적용하기</span>
+          </button>
+          <button type="button" onclick="downloadSilenceResult()" id="btnSilenceDownloadBottom" class="mine-start-btn" style="padding: 0 20px; height: 42px; font-size: 13.5px; margin: 0; background: #10b981; border: 1px solid #10b981; color: #ffffff; font-weight: 800; border-radius: 8px; box-shadow: 0 4px 14px rgba(16,185,129,0.3); white-space: nowrap;" disabled>
+            <span>💾 최종 오디오 저장</span>
+          </button>
+          <button type="button" onclick="generateAndDownloadSilenceSRT()" id="btnSilenceSRT" class="mine-start-btn" style="padding: 0 20px; height: 42px; font-size: 13.5px; margin: 0; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: 1px solid #8b5cf6; color: #ffffff; font-weight: 800; border-radius: 8px; box-shadow: 0 4px 14px rgba(139,92,246,0.35); white-space: nowrap;">
+            <span>📜 SRT 자막 다운로드</span>
+          </button>
+        </div>
+
+        <div style="font-size: 11px; color: #94a3b8;">
+          탐지된 무음 구간 수: <strong id="silenceTotalListCount" style="color: #facc15;">0개</strong>
+        </div>
+      </div>
+
+      <!-- 감지 구간 세부 관리 목록 -->
+      <div style="background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px;">
+        <div style="font-size: 12px; font-weight: 700; color: #f8fafc; margin-bottom: 10px;">📋 무음 감지 구간 세부 관리</div>
+        <div id="silenceDetailList" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+          <div style="font-size: 11px; color: #64748b; text-align: center; padding: 16px 0;">오디오 파일 업로드 후 [무음 구간 감지하기]를 진행해주세요.</div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ================= Mac 사용자 배포 가이드 모달 ================= -->
+  <div id="deployModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-white/20 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          🚀 Mac 사용자에게 배포하는 1분 방법
+        </h3>
+        <button onclick="document.getElementById('deployModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed">
+        <p class="font-bold text-purple-300">
+          이 웹앱은 브라우저 캔버스에서 100% 작동하므로, <strong>Vercel(무료)</strong>에 올리면 평생 무료로 링크를 공유할 수 있습니다!
+        </p>
+        <ol class="list-decimal pl-4 space-y-2 text-slate-400">
+          <li>이 폴더(`shorts_tools_web`)를 GitHub 저장소에 올립니다.</li>
+          <li><strong class="text-white">vercel.com</strong>에 로그인 후 [Add New Project]에서 해당 저장소를 선택합니다.</li>
+          <li>[Deploy] 버튼을 누르면 1분 만에 <code class="bg-black/60 text-purple-300 px-1 py-0.5 rounded">https://내이름.vercel.app</code> 링크가 생성됩니다.</li>
+          <li>해당 주소를 Mac 사용자에게 주면 <strong>설치 0개로 사파리나 크롬에서 즉시 사용</strong>할 수 있습니다!</li>
+        </ol>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="document.getElementById('deployModal').classList.add('hidden')" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
+          확인
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 탭 전환 스크립트 및 초기화 ================= -->
+  <script src="/js/vinyl_player.js?v=20261013_1445"></script>
+  <script src="/js/comment_generator.js?v=20261013_1445"></script>
+  <script src="/js/silence_editor.js?v=20261013_1445"></script>
+  <script>
+    function switchTab(tab) {
+      const vVinyl = document.getElementById('viewVinyl');
+      const vComment = document.getElementById('viewComment');
+      const vSilence = document.getElementById('viewSilence');
+      const btnVinyl = document.getElementById('tabBtnVinyl');
+      const btnComment = document.getElementById('tabBtnComment');
+      const btnSilence = document.getElementById('tabBtnSilence');
+
+      // 모든 뷰 숨김
+      vVinyl.classList.add('hidden');
+      vComment.classList.add('hidden');
+      vSilence.classList.add('hidden');
+
+      // 탭 버튼 스타일 초기화
+      btnVinyl.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200';
+      btnComment.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200';
+      btnSilence.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200';
+
+      if (tab === 'vinyl') {
+        vVinyl.classList.remove('hidden');
+        btnVinyl.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-purple-600 text-white shadow-md shadow-purple-600/30';
+      } else if (tab === 'comment') {
+        vComment.classList.remove('hidden');
+        btnComment.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-pink-600 text-white shadow-md shadow-pink-600/30';
+      } else if (tab === 'silence') {
+        vSilence.classList.remove('hidden');
+        btnSilence.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-amber-600 text-white shadow-md shadow-amber-600/30';
+        if (typeof drawSilenceWaveform === 'function') {
+          setTimeout(() => drawSilenceWaveform(), 50);
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initVinylPlayer();
+      initCommentGenerator();
+      if (typeof initSilenceEditor === 'function') {
+        initSilenceEditor();
+      }
+    });
+  </script>
+</body>
+</html>
