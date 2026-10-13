@@ -165,9 +165,13 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(` 🚀 쇼츠 스튜디오 도구 웹앱 실행 중!`);
-  console.log(` 📍 접속 주소: http://localhost:${PORT}`);
-  console.log(`=======================================================`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(` 🚀 쇼츠 스튜디오 도구 웹앱 실행 중!`);
+    console.log(` 📍 접속 주소: http://localhost:${PORT}`);
+    console.log(`=======================================================`);
+  });
+}
+
+module.exports = app;
