@@ -74,10 +74,10 @@
 
       <!-- 우측 빠른 배포 안내 배지 -->
       <div class="hidden sm:flex items-center gap-2">
-        <a href="#deployGuide" onclick="document.getElementById('deployModal').classList.remove('hidden')" class="text-xs text-purple-300 hover:text-purple-200 bg-purple-950/60 border border-purple-700/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
-          <i data-lucide="globe" class="w-3.5 h-3.5"></i>
-          Mac 사용자에게 링크 보내기
-        </a>
+        <button type="button" onclick="copyMacLink()" class="text-xs text-purple-300 hover:text-purple-100 bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer">
+          <i data-lucide="share-2" class="w-3.5 h-3.5 text-pink-400"></i>
+          <span>Mac 사용자 링크 복사</span>
+        </button>
       </div>
     </div>
   </header>
@@ -493,25 +493,25 @@
               <!-- 💡 카드 모서리 모양 (직사각형 vs 둥근 모서리 선택) -->
               <div>
                 <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1">
-                  <span>모서리 모양 (<span id="cgenRadiusLabel" class="text-pink-400 font-bold">8px (둥근 모서리)</span>)</span>
-                  <span id="cgenRadiusBadge" class="text-[10px] text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded-full border border-purple-500/30 font-bold">라운드</span>
+                  <span>모서리 모양 (<span id="cgenRadiusLabel" class="text-emerald-400 font-bold">0px (직사각형 · 직각)</span>)</span>
+                  <span id="cgenRadiusBadge" class="text-[10px] text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/40 font-bold">직사각형 (직각)</span>
                 </div>
                 <!-- 원클릭 직사각형 vs 둥근모서리 버튼 -->
                 <div class="grid grid-cols-2 gap-1.5 text-xs mb-1.5">
                   <button type="button" id="cgenRadiusBtn_rect" onclick="cgenSetRadius(0)"
-                    class="py-2 px-2 rounded-xl border border-white/10 bg-black/40 hover:border-pink-500/50 text-slate-400 font-medium transition flex items-center justify-center gap-1.5">
+                    class="py-2 px-2 rounded-xl border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/10">
                     <span class="text-xs">🔲 직사각형 (0px 직각)</span>
                   </button>
                   <button type="button" id="cgenRadiusBtn_round" onclick="cgenSetRadius(8)"
-                    class="py-2 px-2 rounded-xl border border-pink-500/40 bg-pink-950/30 text-pink-300 font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-pink-500/10">
+                    class="py-2 px-2 rounded-xl border border-white/10 bg-black/40 hover:border-pink-500/50 text-slate-400 font-medium transition flex items-center justify-center gap-1.5">
                     <span class="text-xs">🔘 둥근 모서리 (8px)</span>
                   </button>
                 </div>
-                <input type="range" id="cgenRadius" min="0" max="24" step="1" value="8" oninput="cgenUpdateRadiusSlider(this.value)" class="w-full accent-pink-500">
+                <input type="range" id="cgenRadius" min="0" max="24" step="1" value="0" oninput="cgenUpdateRadiusSlider(this.value)" class="w-full accent-pink-500">
                 <div class="flex gap-1 mt-1.5 flex-wrap">
-                  <button type="button" onclick="cgenSetRadius(0)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">0px (직각)</button>
+                  <button type="button" onclick="cgenSetRadius(0)" class="text-[10px] bg-emerald-600/30 text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-500/40 transition">0px (직각)</button>
                   <button type="button" onclick="cgenSetRadius(4)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">4px (살짝)</button>
-                  <button type="button" onclick="cgenSetRadius(8)" class="text-[10px] bg-pink-600/30 text-pink-300 font-bold px-2 py-0.5 rounded border border-pink-500/40 transition">8px (표준)</button>
+                  <button type="button" onclick="cgenSetRadius(8)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">8px (표준)</button>
                   <button type="button" onclick="cgenSetRadius(14)" class="text-[10px] bg-white/5 hover:bg-pink-600/30 text-slate-300 hover:text-pink-300 px-2 py-0.5 rounded border border-white/10 transition">14px (부드럽게)</button>
                 </div>
               </div>
@@ -942,10 +942,23 @@
   </div>
 
   <!-- ================= 탭 전환 스크립트 및 초기화 ================= -->
-  <script src="/js/vinyl_player.js?v=20261013_1445"></script>
-  <script src="/js/comment_generator.js?v=20261013_1445"></script>
-  <script src="/js/silence_editor.js?v=20261013_1445"></script>
+  <script src="/js/vinyl_player.js?v=20261013_1450"></script>
+  <script src="/js/comment_generator.js?v=20261013_1450"></script>
+  <script src="/js/silence_editor.js?v=20261013_1450"></script>
   <script>
+    function copyMacLink() {
+      const url = 'https://shorts-tools-web.vercel.app';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('📋 Mac 사용자용 웹 링크가 복사되었습니다!\n\n' + url + '\n\nMac 사용자에게 이 주소를 보내주시면 설치 0개로 사파리나 크롬에서 즉시 사용 가능합니다.');
+        }).catch(() => {
+          prompt('Mac 사용자에게 전달할 웹 주소입니다. 복사(Ctrl+C)하세요:', url);
+        });
+      } else {
+        prompt('Mac 사용자에게 전달할 웹 주소입니다. 복사(Ctrl+C)하세요:', url);
+      }
+    }
+
     function switchTab(tab) {
       const vVinyl = document.getElementById('viewVinyl');
       const vComment = document.getElementById('viewComment');

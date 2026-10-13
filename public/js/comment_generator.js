@@ -25,7 +25,7 @@
     width: 390,
     padding: 16,
     paddingY: 12,
-    borderRadius: 8, // 💡 카드 모서리 둥글기 (0이면 직각 직사각형, 8이면 둥근 모서리)
+    borderRadius: 0, // 💡 카드 모서리 둥글기 (기본값: 0px 직각 직사각형)
     exportFormat: 'png',
     blur: true,
     showAvatar: true,
@@ -40,7 +40,7 @@
       textColor: '#0f0f0f',
       borderColor: '#97a625',
       borderWidth: 1.5,
-      borderRadius: 8,
+      borderRadius: 0,
       softShadow: true
     }
   };
@@ -50,6 +50,7 @@
   // ── 초기화 ────────────────────────────────────────────────────────
   window.initCommentGenerator = function () {
     bindFormEvents();
+    updateRadiusUI(cgenStyle.borderRadius);
     // 초기 로딩 시 URL이 입력되어 있을 때만 자동 추출 (빈 값이면 alert 방지)
     const url = $('cgenVideoUrl')?.value?.trim();
     if (url) {
@@ -413,7 +414,7 @@
     if (!fs || !w || !p || !py) return;
 
     const edit = cgenFocusId ? cgenEdits[cgenFocusId] : null;
-    let curR = cgenStyle.borderRadius ?? 8;
+    let curR = cgenStyle.borderRadius ?? 0;
 
     if (edit && edit.hasOverride) {
       fs.value = edit.fontSize;
@@ -524,7 +525,7 @@
 
     const borderRadius = (edit && edit.hasOverride && edit.borderRadius !== undefined)
       ? edit.borderRadius
-      : (cgenStyle.borderRadius !== undefined ? cgenStyle.borderRadius : 8);
+      : (cgenStyle.borderRadius !== undefined ? cgenStyle.borderRadius : 0);
 
     let stackStyles = [
       `width: ${width}px`,
