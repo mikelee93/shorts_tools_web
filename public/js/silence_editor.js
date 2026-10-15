@@ -208,10 +208,8 @@
         if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
         if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
 
-        // 결과 탭은 이미 WSOLA로 고음질 피치 보존 배속 렌더링이 완료된 상태이므로 1.0(원음) 재생!
-        // (브라우저의 불안정한 배속 위상 왜곡 및 로봇 목소리를 100% 원천 차단)
-        const isResultTab = window.silenceState.activeTab === 'result';
-        audio.playbackRate = isResultTab ? 1.0 : (window.silenceState.speedRate || 1.0);
+        const speed = window.silenceState.speedRate || 1.0;
+        audio.playbackRate = speed;
 
         if (!isNaN(offset) && Math.abs(audio.currentTime - offset) > 0.3) {
             try { audio.currentTime = offset; } catch (e) {}
@@ -429,24 +427,8 @@
             audio.preservesPitch = true;
             if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
             if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
-
-            const isResultTab = window.silenceState.activeTab === 'result';
-            if (!isResultTab && window.silenceState.isPlaying) {
-                audio.playbackRate = speed;
-            }
-        }
-
-        if (window.silenceState.activeTab === 'result' && window.silenceState.audioBuffer) {
-            const btnApply = document.getElementById('btnSilenceApply');
-            if (btnApply) {
-                btnApply.innerHTML = `<span>⏳ ${speed.toFixed(2)}x 고음질 자동 적용 중...</span>`;
-            }
-            clearTimeout(window._speedApplyDebounceTimer);
-            window._speedApplyDebounceTimer = setTimeout(() => {
-                if (window.silenceState.audioBuffer && window.silenceState.activeTab === 'result') {
-                    runSilenceApply();
-                }
-            }, 350);
+            // 🎵 그 구간에서 끊김 없이 부드럽게 실시간 배속 전환! (처음으로 돌아가지 않음)
+            audio.playbackRate = speed;
         }
 
         updateSilenceMetricsUI();
@@ -861,14 +843,11 @@
 
             // 1. 무음 구간 컷팅 (초고속 PCM 슬라이스)
             const { buffer: slicedBuffer } = sliceAudioBuffer(origBuffer, window.silenceState.silences);
+            window.silenceState.resultAudioBuffer = slicedBuffer;
+            window.silenceState.resultDuration = slicedBuffer.duration / speedRate;
 
-            // 2. ⚡ WSOLA 고음질 피치 보존 배속 처리 (음높이 100% 원본 유지)
-            const finalBuffer = wsolaTimeStretchBuffer(slicedBuffer, speedRate);
-            window.silenceState.resultAudioBuffer = finalBuffer;
-            window.silenceState.resultDuration = finalBuffer.duration;
-
-            // 3. 브라우저 재생용 WAV Blob 생성 (이미 배속+피치보존 완제품)
-            const wavBlob = audioBufferToWav(finalBuffer);
+            // 2. 브라우저 재생용 WAV Blob 생성 (원래처럼 실시간 부드러운 배속 재생 지원)
+            const wavBlob = audioBufferToWav(slicedBuffer);
             if (window.silenceState.resultBlobUrl) {
                 try { URL.revokeObjectURL(window.silenceState.resultBlobUrl); } catch (e) {}
             }
@@ -1169,8 +1148,8 @@
         setDownloadButtonsState(true, '인코딩 중...');
 
         try {
-            // 이미 WSOLA로 피치 보존 배속 처리가 완료된 결과 버퍼 사용 (중복 연산 방지)
-            const finalBuffer = resultBuffer;
+            // 다운로드 시 ⚡ WSOLA 고음질 피치 보존 배속 적용 (100% 원본 목소리 유지)
+            const finalBuffer = await renderSpeedAdjustedBuffer(resultBuffer, currentSpeed);
 
             // 포맷별 Blob 생성
             let blob;
