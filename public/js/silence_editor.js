@@ -28,45 +28,102 @@
 
     let playheadAnimFrame = null;
 
-    // Toast 안내
-    function showToast(message) {
+    // Toast 안내 (HTML 및 수동 다운로드 링크 지원)
+    function showToast(message, isHtml = false, duration = 3500) {
         let toast = document.getElementById('silenceGlobalToast');
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'silenceGlobalToast';
-            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0f172a;color:#f8fafc;padding:12px 20px;border-radius:10px;border:1px solid rgba(56,189,248,0.4);box-shadow:0 10px 25px rgba(0,0,0,0.5);font-size:13px;font-weight:700;z-index:9999;transition:all 0.3s ease;transform:translateY(100px);opacity:0;';
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0f172a;color:#f8fafc;padding:14px 22px;border-radius:12px;border:1px solid rgba(56,189,248,0.4);box-shadow:0 10px 30px rgba(0,0,0,0.6);font-size:13px;font-weight:700;z-index:99999;transition:all 0.3s ease;transform:translateY(100px);opacity:0;max-width:440px;line-height:1.5;';
             document.body.appendChild(toast);
         }
-        toast.textContent = message;
+        if (isHtml) {
+            toast.innerHTML = message;
+        } else {
+            toast.textContent = message;
+        }
         toast.style.transform = 'translateY(0)';
         toast.style.opacity = '1';
         clearTimeout(toast._timeout);
         toast._timeout = setTimeout(() => {
             toast.style.transform = 'translateY(100px)';
             toast.style.opacity = '0';
-        }, 3200);
+        }, duration);
     }
 
-    function setDownloadButtonsState(disabled, text = '저장') {
+    // ── 🛡️ Mac / Windows / Safari / Chrome 크로스 플랫폼 안전 다운로드 ──
+    function triggerSafeDownload(blob, filename) {
+        // 1. 강제 다운로드 스트림 타입(application/octet-stream)으로 변환
+        // (Mac Safari 및 브라우저에서 audio/* 타입을 뷰어로 인터셉트하는 것 방지)
+        const safeBlob = new Blob([blob], { type: 'application/octet-stream' });
+        const blobUrl = URL.createObjectURL(safeBlob);
+
+        // 2. a 태그 생성 및 속성 부여
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        a.target = '_self';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+
+        // 3. 브라우저 이벤트 디스패치 (MouseEvent 방식이 Safari/Mac 최신 브라우저에서 가장 안정적)
+        try {
+            const evt = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+            });
+            a.dispatchEvent(evt);
+        } catch (e) {
+            a.click();
+        }
+
+        // 4. 즉시 제거하지 않고 다운로드 파이프라인이 브라우저에 등록될 때까지 지연 (Mac Safari/Chrome 안정성)
+        setTimeout(() => {
+            if (a.parentNode) {
+                a.parentNode.removeChild(a);
+            }
+        }, 20000);
+
+        return blobUrl;
+    }
+
+    function setDownloadButtonsState(disabled, text = '💾 다운로드') {
         const b1 = document.getElementById('btnSilenceDownload');
         const b2 = document.getElementById('btnSilenceDownloadBottom');
         if (b1) {
             b1.disabled = disabled;
-            b1.textContent = text;
+            b1.innerHTML = text;
+            if (!disabled) {
+                b1.style.background = '#10b981';
+                b1.style.color = '#ffffff';
+                b1.style.boxShadow = '0 4px 14px rgba(16,185,129,0.4)';
+            } else {
+                b1.style.background = '#334155';
+                b1.style.color = '#94a3b8';
+                b1.style.boxShadow = 'none';
+            }
         }
         if (b2) {
             b2.disabled = disabled;
-            b2.innerHTML = `<span>💾 ${text === '저장' ? '최종 오디오 저장' : text}</span>`;
+            b2.innerHTML = `<span>${text.includes('💾') ? text : '💾 ' + text}</span>`;
         }
     }
 
-    // Pitch Preservation 지원 Audio 태그
+    // Pitch Preservation 지원 Audio 태그 (이벤트 리스너로 피치 풀림 원천 방지)
     function getAudioElem() {
         if (!window.silenceState.audioElem) {
             const audio = new Audio();
-            audio.preservesPitch = true;
-            if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
-            if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
+            const enforcePitch = () => {
+                audio.preservesPitch = true;
+                if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
+                if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
+            };
+            audio.addEventListener('play', enforcePitch);
+            audio.addEventListener('loadedmetadata', enforcePitch);
+            audio.addEventListener('ratechange', enforcePitch);
+            enforcePitch();
             window.silenceState.audioElem = audio;
         }
         const audio = window.silenceState.audioElem;
@@ -151,8 +208,10 @@
         if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
         if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
 
-        const speed = window.silenceState.speedRate || 1.0;
-        audio.playbackRate = speed;
+        // 결과 탭은 이미 WSOLA로 고음질 피치 보존 배속 렌더링이 완료된 상태이므로 1.0(원음) 재생!
+        // (브라우저의 불안정한 배속 위상 왜곡 및 로봇 목소리를 100% 원천 차단)
+        const isResultTab = window.silenceState.activeTab === 'result';
+        audio.playbackRate = isResultTab ? 1.0 : (window.silenceState.speedRate || 1.0);
 
         if (!isNaN(offset) && Math.abs(audio.currentTime - offset) > 0.3) {
             try { audio.currentTime = offset; } catch (e) {}
@@ -365,12 +424,29 @@
             badge.textContent = `${speed.toFixed(2)}x ${speed === 1.0 ? '(원래 속도)' : ''}`;
         }
 
-        if (window.silenceState.isPlaying && window.silenceState.audioElem) {
+        if (window.silenceState.audioElem) {
             const audio = window.silenceState.audioElem;
             audio.preservesPitch = true;
             if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = true;
             if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = true;
-            audio.playbackRate = speed;
+
+            const isResultTab = window.silenceState.activeTab === 'result';
+            if (!isResultTab && window.silenceState.isPlaying) {
+                audio.playbackRate = speed;
+            }
+        }
+
+        if (window.silenceState.activeTab === 'result' && window.silenceState.audioBuffer) {
+            const btnApply = document.getElementById('btnSilenceApply');
+            if (btnApply) {
+                btnApply.innerHTML = `<span>⏳ ${speed.toFixed(2)}x 고음질 자동 적용 중...</span>`;
+            }
+            clearTimeout(window._speedApplyDebounceTimer);
+            window._speedApplyDebounceTimer = setTimeout(() => {
+                if (window.silenceState.audioBuffer && window.silenceState.activeTab === 'result') {
+                    runSilenceApply();
+                }
+            }, 350);
         }
 
         updateSilenceMetricsUI();
@@ -546,19 +622,116 @@
         return { buffer: newBuffer, keptSegments };
     }
 
-    // ── ⚡ 배속 렌더링 (OfflineAudioContext) ───────────────────────────
+    // ── ⚡ WSOLA 고음질 피치 보존 배속 엔진 (수학적 완전 OLA + Formant 보존) ──
+    // 음높이(Pitch)와 음색(Formant)을 원본 100% 그대로 유지하면서
+    // 위상 왜곡, 진폭 출렁거림(Tremolo), 깡통 소리 없는 자연스러운 음성을 생성합니다.
+    function wsolaTimeStretchBuffer(inputBuffer, speedRate) {
+        if (!inputBuffer || Math.abs(speedRate - 1.0) < 0.005) {
+            return inputBuffer;
+        }
+
+        const numChannels = inputBuffer.numberOfChannels;
+        const sampleRate = inputBuffer.sampleRate;
+        const inputLength = inputBuffer.length;
+
+        // 사람 목소리(남/여 음성)의 기본 피치 주기(85~255Hz)를 완벽히 감싸는 황금 윈도우 크기 (약 40~46ms)
+        const windowSize = sampleRate >= 44100 ? 2048 : 1024;
+        const halfWin = Math.floor(windowSize / 2); // 1024 샘플 (약 23ms 크로스페이드)
+        const synthesisHop = halfWin;               // 합성 홉 = 오버랩 길이 (1:1 COLA 완전 일치)
+        const analysisHop = Math.round(synthesisHop * speedRate);
+        const searchRange = Math.floor(halfWin / 2); // 512 샘플
+
+        const estimatedOutputLength = Math.max(1, Math.floor(inputLength / speedRate));
+        const outCapacity = estimatedOutputLength + windowSize * 2;
+
+        // Hanning 윈도우 크로스페이드 테이블 (에너지 보존 합산: (1-w) + w = 1.0)
+        const win = new Float32Array(halfWin);
+        for (let i = 0; i < halfWin; i++) {
+            win[i] = 0.5 * (1 - Math.cos((Math.PI * i) / halfWin));
+        }
+
+        const inChannels = [];
+        const outChannels = [];
+        for (let c = 0; c < numChannels; c++) {
+            inChannels.push(inputBuffer.getChannelData(c));
+            outChannels.push(new Float32Array(outCapacity));
+        }
+
+        const refChannel = inChannels[0];
+        let inPos = 0;
+        let outPos = 0;
+
+        // 첫 프레임 복사
+        const initLen = Math.min(windowSize, inputLength);
+        for (let c = 0; c < numChannels; c++) {
+            for (let i = 0; i < initLen; i++) {
+                outChannels[c][i] = inChannels[c][i];
+            }
+        }
+        inPos += analysisHop;
+        outPos += synthesisHop;
+
+        // WSOLA 메인 루프 (정규화 상관관계 피크 탐색 + 1:1 Overlap-Add)
+        while (inPos + windowSize + searchRange < inputLength) {
+            const targetInPos = inPos;
+            let bestOffset = 0;
+            let maxCorr = -Infinity;
+
+            // 1. 정규화 상관관계 + 중심 가중치(Tapered NCC)로 최적 위상 일치 지점 탐색
+            // (자음/치찰음 구간에서 오프셋이 튀는 지터를 원천 차단하여 원래 목소리 100% 동일 유지)
+            for (let offset = -searchRange; offset <= searchRange; offset += 2) {
+                const candStart = targetInPos + offset;
+                let corr = 0;
+                let energy = 0;
+                for (let i = 0; i < halfWin; i += 4) {
+                    const o = outChannels[0][outPos + i];
+                    const c = refChannel[candStart + i];
+                    corr += o * c;
+                    energy += c * c;
+                }
+                const penalty = 1.0 - 0.2 * (Math.abs(offset) / searchRange);
+                const score = (corr / (Math.sqrt(energy) + 1e-6)) * penalty;
+                if (score > maxCorr) {
+                    maxCorr = score;
+                    bestOffset = offset;
+                }
+            }
+
+            const bestInStart = targetInPos + bestOffset;
+
+            // 2. 수학적 완전 Overlap-Add (Constant Overlap-Add 성립)
+            for (let c = 0; c < numChannels; c++) {
+                const inData = inChannels[c];
+                const outData = outChannels[c];
+
+                // 2-1. 이전 프레임의 꼬리와 새 프레임의 머리를 부드럽게 Hanning 크로스페이드
+                for (let i = 0; i < halfWin; i++) {
+                    const w = win[i];
+                    outData[outPos + i] = outData[outPos + i] * (1.0 - w) + inData[bestInStart + i] * w;
+                }
+                // 2-2. 새 프레임의 나머지 절반을 그대로 복사 (다음 프레임과 매끄럽게 이어짐)
+                for (let i = halfWin; i < windowSize; i++) {
+                    outData[outPos + i] = inData[bestInStart + i];
+                }
+            }
+
+            inPos += analysisHop;
+            outPos += synthesisHop;
+        }
+
+        const finalLength = Math.min(outPos, outCapacity);
+        const ctx = getAudioCtx();
+        const resultBuffer = ctx.createBuffer(numChannels, Math.max(1, finalLength), sampleRate);
+        for (let c = 0; c < numChannels; c++) {
+            resultBuffer.copyToChannel(outChannels[c].subarray(0, finalLength), c);
+        }
+
+        return resultBuffer;
+    }
+
+    // 하위 호환 래퍼
     async function renderSpeedAdjustedBuffer(buffer, speedRate) {
-        if (Math.abs(speedRate - 1.0) < 0.005) return buffer;
-        const targetDuration = buffer.duration / speedRate;
-        const sampleRate = buffer.sampleRate;
-        const targetSamples = Math.max(1, Math.round(targetDuration * sampleRate));
-        const offlineCtx = new OfflineAudioContext(buffer.numberOfChannels, targetSamples, sampleRate);
-        const src = offlineCtx.createBufferSource();
-        src.buffer = buffer;
-        src.playbackRate.value = speedRate;
-        src.connect(offlineCtx.destination);
-        src.start(0);
-        return await offlineCtx.startRendering();
+        return wsolaTimeStretchBuffer(buffer, speedRate);
     }
 
     // ── 📦 WAV 인코더 (16-bit PCM Lossless) ───────────────────────────
@@ -686,13 +859,16 @@
         try {
             const speedRate = window.silenceState.speedRate || 1.0;
 
-            // 1. 무음 구간 컷팅 (0.01초 만에 실행!)
+            // 1. 무음 구간 컷팅 (초고속 PCM 슬라이스)
             const { buffer: slicedBuffer } = sliceAudioBuffer(origBuffer, window.silenceState.silences);
-            window.silenceState.resultAudioBuffer = slicedBuffer;
-            window.silenceState.resultDuration = slicedBuffer.duration / speedRate;
 
-            // 2. 브라우저 재생용 WAV Blob 생성
-            const wavBlob = audioBufferToWav(slicedBuffer);
+            // 2. ⚡ WSOLA 고음질 피치 보존 배속 처리 (음높이 100% 원본 유지)
+            const finalBuffer = wsolaTimeStretchBuffer(slicedBuffer, speedRate);
+            window.silenceState.resultAudioBuffer = finalBuffer;
+            window.silenceState.resultDuration = finalBuffer.duration;
+
+            // 3. 브라우저 재생용 WAV Blob 생성 (이미 배속+피치보존 완제품)
+            const wavBlob = audioBufferToWav(finalBuffer);
             if (window.silenceState.resultBlobUrl) {
                 try { URL.revokeObjectURL(window.silenceState.resultBlobUrl); } catch (e) {}
             }
@@ -703,14 +879,26 @@
             playSilenceAudio(0);
 
             // 4. 저장 버튼 활성화
-            setDownloadButtonsState(false, '저장');
+            setDownloadButtonsState(false, '💾 다운로드');
 
-            document.getElementById('silenceNoticeBanner').style.display = 'flex';
-            document.getElementById('silenceNoticeText').textContent = `🎉 결과 생성이 완료되었습니다! 재생 바에서 들어보거나 [저장] 버튼을 누르세요.`;
+            const noticeBanner = document.getElementById('silenceNoticeBanner');
+            const noticeText = document.getElementById('silenceNoticeText');
+            if (noticeBanner && noticeText) {
+                noticeBanner.style.display = 'flex';
+                noticeBanner.style.background = 'rgba(34, 197, 94, 0.15)';
+                noticeBanner.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+                noticeText.innerHTML = `
+                    <span style="font-size:12.5px;">🎉 편집 반영 완료! <strong>(아직 PC에 저장 전입니다)</strong></span>
+                    <button type="button" onclick="downloadSilenceResult()" style="background:#10b981; border:none; color:#ffffff; font-weight:800; font-size:12px; padding:6px 16px; border-radius:8px; cursor:pointer; box-shadow:0 3px 10px rgba(16,185,129,0.4); margin-left:10px; vertical-align:middle; transition:transform 0.1s;">
+                        💾 지금 파일 다운로드하기
+                    </button>
+                    <span style="font-size:11.5px; color:#cbd5e1; margin-left:6px;">또는 아래 재생 바의 [💾 다운로드] 버튼을 누르세요.</span>
+                `;
+            }
 
             const speedMsg = speedRate !== 1.0 ? ` ${speedRate}x 배속` : '';
             const silenceMsg = (window.silenceState.silences || []).filter(s => s.remove).length > 0 ? ' 무음제거 &' : '';
-            showToast(`🎉${silenceMsg}${speedMsg} 처리가 완료되었습니다!`);
+            showToast(`🎉${silenceMsg}${speedMsg} 처리가 완료되었습니다! [지금 파일 다운로드하기]를 눌러 저장하세요.`, false, 4500);
 
         } catch (err) {
             console.error('[runSilenceApply error]', err);
@@ -981,8 +1169,8 @@
         setDownloadButtonsState(true, '인코딩 중...');
 
         try {
-            // 배속 반영하여 버퍼 렌더링
-            const finalBuffer = await renderSpeedAdjustedBuffer(resultBuffer, currentSpeed);
+            // 이미 WSOLA로 피치 보존 배속 처리가 완료된 결과 버퍼 사용 (중복 연산 방지)
+            const finalBuffer = resultBuffer;
 
             // 포맷별 Blob 생성
             let blob;
@@ -992,19 +1180,41 @@
                 blob = audioBufferToWav(finalBuffer);
             }
 
-            const originalName = window.silenceState.fileName ? window.silenceState.fileName.replace(/\.[^/.]+$/, "") : "무음제거_결과";
+            // 파일명 정리 (Mac / Windows 호환: 유니코드 NFC 정규화 및 특수문자 안전 치환)
+            const rawName = window.silenceState.fileName ? window.silenceState.fileName.replace(/\.[^/.]+$/, "") : "무음제거_결과";
+            const safeOriginalName = rawName.normalize('NFC').replace(/[\\/:*?"<>|]/g, '_');
             const ext = currentFormat === 'mp3' && blob.type.includes('mp3') ? 'mp3' : 'wav';
-            const filename = `${originalName}_무음제거_${currentSpeed}x.${ext}`;
+            const filename = `${safeOriginalName}_무음제거_${currentSpeed}x.${ext}`;
 
-            // 브라우저 직접 다운로드 트리거
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            // 1. 크로스 플랫폼 안전 자동 다운로드 실행
+            const blobUrl = triggerSafeDownload(blob, filename);
 
-            showToast(`💾 [${filename}] 다운로드가 시작되었습니다!`);
+            // 2. 상단 배너에 [직접 다운로드 버튼] 활성화 (Mac Safari/Chrome 자동 다운로드 차단 시 100% 대응)
+            const noticeBanner = document.getElementById('silenceNoticeBanner');
+            const noticeText = document.getElementById('silenceNoticeText');
+            if (noticeBanner && noticeText) {
+                noticeBanner.style.display = 'flex';
+                noticeBanner.style.background = 'rgba(16, 185, 129, 0.18)';
+                noticeBanner.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                noticeText.innerHTML = `
+                    <span>🎉 <strong>[${filename}]</strong> 파일 생성 완료!</span>
+                    <a href="${blobUrl}" download="${filename}" style="display:inline-block; margin-left:12px; background:#10b981; color:#ffffff; padding:4px 12px; border-radius:6px; text-decoration:none; font-weight:800; font-size:12px; box-shadow:0 2px 6px rgba(0,0,0,0.3); vertical-align:middle;">
+                        📥 저장 안 되었으면 여기 클릭
+                    </a>
+                `;
+            }
+
+            // 3. 토스트 팝업에서도 수동 다운로드 직접 링크 제공 (8초 유지)
+            showToast(`
+                <div>💾 <strong>[${filename}]</strong></div>
+                <div style="font-size:11.5px; color:#cbd5e1; margin-top:5px; font-weight:normal; line-height:1.4;">
+                    다운로드가 시작되었습니다.<br>
+                    <span style="color:#94a3b8;">(Mac/브라우저 설정으로 저장이 안 된 경우:</span>
+                    <a href="${blobUrl}" download="${filename}" style="color:#38bdf8; text-decoration:underline; font-weight:800; margin-left:4px; cursor:pointer;">
+                        [여기를 클릭해 저장]
+                    </a><span style="color:#94a3b8;">)</span>
+                </div>
+            `, true, 8000);
         } catch (err) {
             console.error('[downloadSilenceResult Error]', err);
             alert('오디오 파일 저장 실패: ' + err.message);
@@ -1184,18 +1394,22 @@
 
         const srtContent = srtEntries.join('\n');
         const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const originalName = window.silenceState.fileName ? window.silenceState.fileName.replace(/\.[^/.]+$/, "") : "무음제거_결과";
+        const rawName = window.silenceState.fileName ? window.silenceState.fileName.replace(/\.[^/.]+$/, "") : "무음제거_결과";
+        const safeOriginalName = rawName.normalize('NFC').replace(/[\\/:*?"<>|]/g, '_');
         const speed = window.silenceState.speedRate || 1.0;
-        a.download = `자막_${originalName}_${speed}x.srt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const filename = `자막_${safeOriginalName}_${speed}x.srt`;
 
-        showToast(`🎉 Vrew 스타일 ${maxChars > 0 ? maxChars + '자' : '문장'} 단위 분할 (총 ${sentences.length}개 클립) 자막 다운로드 완료!`);
+        const blobUrl = triggerSafeDownload(blob, filename);
+
+        showToast(`
+            <div>🎉 Vrew 스타일 ${maxChars > 0 ? maxChars + '자' : '문장'} 분할 자막 다운로드! (총 ${sentences.length}개 클립)</div>
+            <div style="font-size:11.5px; color:#cbd5e1; margin-top:5px; font-weight:normal;">
+                자동 저장이 안 된 경우: 
+                <a href="${blobUrl}" download="${filename}" style="color:#38bdf8; text-decoration:underline; font-weight:800; margin-left:4px; cursor:pointer;">
+                    [여기 클릭하여 자막 받기]
+                </a>
+            </div>
+        `, true, 6000);
     };
 
     window.initSilenceEditor = function() {

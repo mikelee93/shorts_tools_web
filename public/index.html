@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>쇼츠 스튜디오 도구 — 회전 LP 뮤직 플레이어 & 댓글 생성기</title>
 
   <!-- Tailwind CSS -->
@@ -649,6 +652,7 @@
           <div style="font-size: 17px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
             <span>✂️ 무음 제거 & 배속 조절 에디터</span>
             <span style="font-size: 10px; color: #ec4899; background: rgba(236,72,153,0.15); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(236,72,153,0.3);">mp3cut.net Style Engine</span>
+            <span id="silenceEngineBadge" style="font-size: 10px; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(56,189,248,0.3); font-weight: bold;">v2.5 스튜디오 원음 엔진</span>
           </div>
           <div style="font-size: 11.5px; color: #94a3b8; margin-top: 4px;">
             오디오/영상 파일의 무음 구간을 자동 컷팅하고 재생 속도(0.5x~2.0x)를 한 번에 조절하여 저장합니다. (API 비용 0원)
@@ -746,8 +750,8 @@
             <option value="mp3">mp3 ▾</option>
           </select>
 
-          <button type="button" id="btnSilenceDownload" onclick="downloadSilenceResult()" disabled style="background: #ffffff; border: none; color: #0f172a; font-size: 14px; font-weight: 800; padding: 10px 26px; border-radius: 20px; cursor: pointer; box-shadow: 0 4px 14px rgba(255,255,255,0.2); transition: all 0.2s;">
-            저장
+          <button type="button" id="btnSilenceDownload" onclick="downloadSilenceResult()" disabled style="background: #334155; border: none; color: #94a3b8; font-size: 14px; font-weight: 800; padding: 10px 24px; border-radius: 20px; cursor: pointer; box-shadow: none; transition: all 0.2s;">
+            💾 다운로드
           </button>
         </div>
 
@@ -944,7 +948,7 @@
   <!-- ================= 탭 전환 스크립트 및 초기화 ================= -->
   <script src="/js/vinyl_player.js?v=20261013_1450"></script>
   <script src="/js/comment_generator.js?v=20261013_1450"></script>
-  <script src="/js/silence_editor.js?v=20261013_1450"></script>
+  <script src="/js/silence_editor.js?v=20261014_2148_ultra"></script>
   <script>
     function copyMacLink() {
       const url = 'https://shorts-tools-web.vercel.app';
